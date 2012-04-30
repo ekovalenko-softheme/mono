@@ -515,7 +515,6 @@ namespace MonoTests.System
 		}
 
         [Test]
-	[Category ("NotWorking")]
         public void EscapedUriCandidate ()
         {
             var candidateUri = new Uri (@"https://somehost:12345/path1/path2/path3/endprefix/tpath1/guid1/tpath2/~|~~|~%3F~|~Path{guid2}~|~/tpath3");
