@@ -471,10 +471,14 @@ namespace System.Runtime.Serialization
 
 			known_types.Add (graph.GetType ());
 
-			if (names_filled)
+			if (names_filled) {
 				writer.WriteStartElement (root_name.Value, root_ns.Value);
-			else
+				if (rootQName.Namespace != KnownTypeCollection.MSSimpleNamespace)
+					writer.WriteXmlnsAttribute (string.Empty, rootQName.Namespace);
+			}
+			else {
 				writer.WriteStartElement (root_name, root_ns);
+			}
 
 			if (rootQName != graph_qname || rootQName.Namespace != KnownTypeCollection.MSSimpleNamespace && !rootType.IsEnum)
 				//FIXME: Hack, when should the "i:type" be written?
