@@ -4,6 +4,7 @@ System.Runtime.Serialization/Bug2843Test.cs
 System.Runtime.Serialization/Bug695203Test.cs
 System.Runtime.Serialization/DataContractResolverTest.cs
 System.Runtime.Serialization/DataContractSerializerTest_DuplicateQName.cs
+System.Runtime.Serialization/DataContractSerializerTest_NamespaceOrder.cs
 System.Runtime.Serialization/DataContractSerializerTest_NullableWithDictionary.cs
 System.Runtime.Serialization/KnownTypeAttributeTest.cs
 System.Runtime.Serialization/XmlObjectSerializerTest.cs
