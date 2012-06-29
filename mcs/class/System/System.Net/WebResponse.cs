@@ -72,7 +72,7 @@ namespace System.Net
 		public virtual bool IsFromCache
 		{
 			get {
-				throw GetMustImplement ();
+				return false;			
 			}
 		}
 		
