@@ -200,16 +200,13 @@ namespace System.Net {
 
 			ListenerAsyncResult ares = new ListenerAsyncResult (callback, state);
 
-			// lock wait_queue early to avoid race conditions
-			lock (wait_queue) {
-				lock (ctx_queue) {
-					HttpListenerContext ctx = GetContextFromQueue ();
-					if (ctx != null) {
-						ares.Complete (ctx, true);
-						return ares;
-					}
-				}
+			HttpListenerContext ctx = GetContextFromQueue ();
+			if (ctx != null) {
+				ares.Complete (ctx, true);
+				return ares;
+			}
 
+			lock (wait_queue) {
 				wait_queue.Add (ares);
 			}
 
@@ -301,15 +298,16 @@ namespace System.Net {
 				throw new ObjectDisposedException (GetType ().ToString ());
 		}
 
-		// Must be called with a lock on ctx_queue
 		HttpListenerContext GetContextFromQueue ()
 		{
-			if (ctx_queue.Count == 0)
-				return null;
+			lock (ctx_queue) {
+				if (ctx_queue.Count == 0)
+					return null;
 
-			HttpListenerContext context = (HttpListenerContext) ctx_queue [0];
-			ctx_queue.RemoveAt (0);
-			return context;
+				HttpListenerContext context = (HttpListenerContext) ctx_queue [0];
+				ctx_queue.RemoveAt (0);
+				return context;
+			}
 		}
 
 		internal void RegisterContext (HttpListenerContext context)
