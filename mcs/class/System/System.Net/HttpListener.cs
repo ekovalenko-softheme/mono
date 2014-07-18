@@ -39,6 +39,7 @@ using System.Threading.Tasks;
 //TODO: logging
 namespace System.Net {
 	public sealed class HttpListener : IDisposable {
+		object ctx_wait_lock;
 		AuthenticationSchemes auth_schemes;
 		HttpListenerPrefixCollection prefixes;
 		AuthenticationSchemeSelector auth_selector; 
@@ -61,6 +62,7 @@ namespace System.Net {
 			ctx_queue = new ArrayList ();
 			wait_queue = new ArrayList ();
 			auth_schemes = AuthenticationSchemes.Anonymous;
+			ctx_wait_lock = new object ();
 		}
 
 		// TODO: Digest, NTLM and Negotiate require ControlPrincipal
@@ -175,14 +177,12 @@ namespace System.Net {
 					for (int i = conns.Length - 1; i >= 0; i--)
 						conns [i].Close (true);
 				}
-				lock (ctx_queue) {
+				lock (ctx_wait_lock) {
 					var ctxs = (HttpListenerContext []) ctx_queue.ToArray (typeof (HttpListenerContext));
 					ctx_queue.Clear ();
 					for (int i = ctxs.Length - 1; i >= 0; i--)
 						ctxs [i].Connection.Close (true);
-				}
 
-				lock (wait_queue) {
 					Exception exc = new ObjectDisposedException ("listener");
 					foreach (ListenerAsyncResult ares in wait_queue) {
 						ares.Complete (exc);
@@ -200,13 +200,14 @@ namespace System.Net {
 
 			ListenerAsyncResult ares = new ListenerAsyncResult (callback, state);
 
-			HttpListenerContext ctx = GetContextFromQueue ();
-			if (ctx != null) {
-				ares.Complete (ctx, true);
-				return ares;
-			}
+			lock (ctx_wait_lock)
+			{
+				HttpListenerContext ctx = GetContextFromQueue ();
+				if (ctx != null) {
+					ares.Complete (ctx, true);
+					return ares;
+				}
 
-			lock (wait_queue) {
 				wait_queue.Add (ares);
 			}
 
@@ -229,7 +230,7 @@ namespace System.Net {
 			if (!ares.IsCompleted)
 				ares.AsyncWaitHandle.WaitOne ();
 
-			lock (wait_queue) {
+			lock (ctx_wait_lock) {
 				int idx = wait_queue.IndexOf (ares);
 				if (idx >= 0)
 					wait_queue.RemoveAt (idx);
@@ -300,14 +301,12 @@ namespace System.Net {
 
 		HttpListenerContext GetContextFromQueue ()
 		{
-			lock (ctx_queue) {
-				if (ctx_queue.Count == 0)
-					return null;
+			if (ctx_queue.Count == 0)
+				return null;
 
-				HttpListenerContext context = (HttpListenerContext) ctx_queue [0];
-				ctx_queue.RemoveAt (0);
-				return context;
-			}
+			HttpListenerContext context = (HttpListenerContext) ctx_queue [0];
+			ctx_queue.RemoveAt (0);
+			return context;
 		}
 
 		internal void RegisterContext (HttpListenerContext context)
@@ -316,15 +315,16 @@ namespace System.Net {
 				registry [context] = context;
 
 			ListenerAsyncResult ares = null;
-			lock (wait_queue) {
+			lock (ctx_wait_lock) {
 				if (wait_queue.Count == 0) {
-					lock (ctx_queue)
-						ctx_queue.Add (context);
-				} else {
+					ctx_queue.Add (context);
+				}
+				else {
 					ares = (ListenerAsyncResult) wait_queue [0];
 					wait_queue.RemoveAt (0);
 				}
 			}
+
 			if (ares != null)
 				ares.Complete (context);
 		}
@@ -333,7 +333,7 @@ namespace System.Net {
 		{
 			lock (registry)
 				registry.Remove (context);
-			lock (ctx_queue) {
+			lock (ctx_wait_lock) {
 				int idx = ctx_queue.IndexOf (context);
 				if (idx >= 0)
 					ctx_queue.RemoveAt (idx);
