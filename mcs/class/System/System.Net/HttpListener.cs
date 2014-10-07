@@ -261,18 +261,17 @@ namespace System.Net {
 			if (!listening)
 				throw new InvalidOperationException ("Please, call Start before using this method.");
 
-			while (listening) {
-				lock (ctx_queue) {
-					HttpListenerContext ctx = GetContextFromQueue ();
-					if (ctx != null) {
-						ctx.ParseAuthentication (SelectAuthenticationScheme (ctx));
-						return ctx;
-					}
-				}
-				Thread.Sleep(10);
+			HttpListenerContext ctx = null;
+			while (ctx == null) {
+				lock (ctx_queue)
+					ctx = GetContextFromQueue ();
+
+				if (ctx == null)
+					Thread.Sleep(10);
 			}
 
-			return null;
+			ctx.ParseAuthentication (SelectAuthenticationScheme (ctx));
+			return ctx;
 		}
 
 		public void Start ()
