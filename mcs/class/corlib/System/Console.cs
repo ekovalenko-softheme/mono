@@ -96,6 +96,22 @@ namespace System
 
 		static Console ()
 		{
+			Initialize ();
+		}
+
+		public static void ForceInitilalizeFullDriver()
+		{
+			ConsoleDriver.ForceInitilalizeFullDriver ();
+			Initialize ();
+		}
+
+		static void Initialize()
+		{
+#if NET_2_1
+			Encoding inputEncoding;
+			Encoding outputEncoding;
+#endif
+
 			if (Environment.IsRunningOnWindows) {
 				//
 				// On Windows, follow the Windows tradition
@@ -168,6 +184,12 @@ namespace System
 		public static TextWriter Error {
 			get {
 				return stderr;
+			}
+		}
+
+		public static bool IsConsole{
+			get {
+				return ConsoleDriver.IsConsole;
 			}
 		}
 
