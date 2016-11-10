@@ -431,7 +431,7 @@ namespace System.Net {
 
 		public void Close ()
 		{
-			Close (false);
+			Close (true);
 		}
 
 		void CloseSocket ()
