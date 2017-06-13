@@ -719,6 +719,11 @@ namespace Mono.Net.Security
 			}
 		}
 
+		~MobileAuthenticatedStream()
+		{
+			Dispose (false);
+		}
+
 		public override void Flush ()
 		{
 			CheckThrow (true);
