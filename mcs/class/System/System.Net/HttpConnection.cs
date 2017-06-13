@@ -500,7 +500,14 @@ namespace System.Net {
 						s.Close ();
 				}
 				Unbind ();
-				RemoveConnection ();
+	   			RemoveConnection ();
+
+				if (ssl_stream != null && ssl_stream.AuthenticatedStream != null)
+					ssl_stream.AuthenticatedStream.Close ();
+
+				if (ms != null)
+					ms.Close ();
+
 				return;
 			}
 		}
