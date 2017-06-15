@@ -315,11 +315,10 @@ namespace System.Net.Sockets
 		{
 			if (active) 
 			{
+				active = false;
 				server.Close ();
 				server = null;
 			}
-
-			Init (AddressFamily.InterNetwork, savedEP);
 		}
 
 		public Task<Socket> AcceptSocketAsync ()
