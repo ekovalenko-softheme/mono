@@ -3,6 +3,7 @@
  */
 
 #include <config.h>
+#include <signal.h>
 
 #ifdef HOST_WIN32
 /* For select */
@@ -23,28 +24,32 @@ mono_poll (mono_pollfd *ufds, unsigned int nfds, int timeout)
 }
 #else
 
-#if defined(HAVE_POLL) && !defined(__APPLE__)
 int
 mono_poll (mono_pollfd *ufds, unsigned int nfds, int timeout)
 {
-	return poll (ufds, nfds, timeout);
-}
-#else
-
-int
-mono_poll (mono_pollfd *ufds, unsigned int nfds, int timeout)
-{
-	struct timeval tv, *tvptr;
+	struct timespec tv, *tvptr;
 	int i, fd, events, affected, count;
 	fd_set rfds, wfds, efds;
 	int nexc = 0;
 	int maxfd = 0;
 
+	sigset_t _sigmask, _auxmask;
+
+	sigemptyset(&_auxmask);
+	sigemptyset(&_sigmask);
+	sigaddset(&_sigmask, SIGINT);
+	sigaddset(&_sigmask, SIGTERM);
+	sigaddset(&_sigmask, SIGKILL);
+	sigaddset(&_sigmask, SIGQUIT);
+	sigaddset(&_sigmask, SIGHUP);
+
+	sigprocmask(SIG_BLOCK, &_sigmask, &_auxmask);
+
 	if (timeout < 0) {
 		tvptr = NULL;
 	} else {
-		tv.tv_sec = timeout / 1000;
-		tv.tv_usec = (timeout % 1000) * 1000;
+		tv.tv_sec = timeout / 1000; // ms to s.
+		tv.tv_nsec = (timeout % 1000) * 1000000; // ms part of timeout to ns.
 		tvptr = &tv;
 	}
 
@@ -84,7 +89,7 @@ mono_poll (mono_pollfd *ufds, unsigned int nfds, int timeout)
 			
 	}
 
-	affected = select (maxfd + 1, &rfds, &wfds, &efds, tvptr);
+	affected = pselect (maxfd + 1, &rfds, &wfds, &efds, tvptr, &_auxmask);
 	if (affected == -1) {
 #ifdef HOST_WIN32
 		int error = WSAGetLastError ();
@@ -133,7 +138,5 @@ mono_poll (mono_pollfd *ufds, unsigned int nfds, int timeout)
 
 	return count;
 }
-
-#endif
 
 #endif /* #ifndef DISABLE_SOCKETS */
