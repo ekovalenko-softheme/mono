@@ -162,8 +162,7 @@ namespace System.Net {
 
 		void OnTimeout (object unused)
 		{
-			CloseSocket ();
-			Unbind ();
+			Close (false);
 		}
 
 		public void BeginReadRequest ()
@@ -245,8 +244,7 @@ namespace System.Net {
 			if (nread == 0) {
 				//if (ms.Length > 0)
 				//	SendError (); // Why bother?
-				CloseSocket ();
-				Unbind ();
+				Close (false);
 				return;
 			}
 
@@ -445,6 +443,8 @@ namespace System.Net {
 				return;
 
 			try {
+				sock.Shutdown (SocketShutdown.Both);
+				sock.Disconnect (false);
 				sock.Close ();
 			} catch {
 			} finally {
@@ -463,6 +463,7 @@ namespace System.Net {
 			}
 
 			if (ssl_stream != null) {
+				ssl_stream.AuthenticatedStream.Dispose();
 				ssl_stream.Dispose();
 				ssl_stream = null;
 			}
@@ -476,6 +477,16 @@ namespace System.Net {
 				timer.Dispose();
 				timer = null;
 			}
+
+			if (client_cert != null) {
+				client_cert.Dispose();
+				client_cert = null;
+			}
+
+			cert = null;
+			local_ep = null;
+			last_listener = null;
+			epl = null;
 		}
 
 		internal void Close (bool force_close)
@@ -519,6 +530,7 @@ namespace System.Net {
 
 					reuses++;
 					Unbind ();
+					RemoveConnection ();
 					Init ();
 					BeginReadRequest ();
 					return;
@@ -529,6 +541,7 @@ namespace System.Net {
 				try {
 					if (s != null)
 						s.Shutdown (SocketShutdown.Both);
+						s.Disconnect (false);
 				} catch {
 				} finally {
 					if (s != null)
