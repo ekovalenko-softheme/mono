@@ -463,7 +463,9 @@ namespace System.Net {
 			}
 
 			if (ssl_stream != null) {
-				ssl_stream.AuthenticatedStream.Dispose();
+				if (ssl_stream.AuthenticatedStream != null) {
+					ssl_stream.AuthenticatedStream.Dispose();
+				}
 				ssl_stream.Dispose();
 				ssl_stream = null;
 			}
