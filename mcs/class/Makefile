@@ -471,7 +471,7 @@ monolite_url = https://download.mono-project.com/monolite/monolite-$(BUILD_PLATF
 get-monolite-latest:
 	-rm -fr lib/monolite-$(BUILD_PLATFORM)/$(MONO_CORLIB_VERSION)
 	-mkdir -p lib/monolite-$(BUILD_PLATFORM)
-	cd lib && { (wget -O- $(monolite_url) || curl -L $(monolite_url)) | gzip -d | tar xf - ; }
+	cd lib && { (wget -O- $(monolite_url) --no-check-certificate || curl -L $(monolite_url)) | gzip -d | tar xf - ; }
 	cd lib && mv -f monolite-$(BUILD_PLATFORM)-$(MONO_CORLIB_VERSION)-latest monolite-$(BUILD_PLATFORM)/$(MONO_CORLIB_VERSION)
 
 dist-default: dist-monolite-all-platforms
