@@ -59,12 +59,12 @@ namespace System.Net {
 		Timer timer;
 		IPEndPoint local_ep;
 		HttpListener last_listener;
-		int [] client_cert_errors;
-		X509Certificate2 client_cert;
 		SslStream ssl_stream;
+		HttpConnectionCertificateHelper cert_helper;
 
 		public HttpConnection (Socket sock, EndPointListener epl, bool secure, X509Certificate cert)
 		{
+			cert_helper = new HttpConnectionCertificateHelper ();
 			this.sock = sock;
 			this.epl = epl;
 			this.secure = secure;
@@ -72,16 +72,7 @@ namespace System.Net {
 			if (secure == false) {
 				stream = new NetworkStream (sock, false);
 			} else {
-				ssl_stream = epl.Listener.CreateSslStream (new NetworkStream (sock, false), false, (t, c, ch, e) => {
-					if (c == null)
-						return true;
-					var c2 = c as X509Certificate2;
-					if (c2 == null)
-						c2 = new X509Certificate2 (c.GetRawCertData ());
-					client_cert = c2;
-					client_cert_errors = new int[] { (int)e };
-					return true;
-				});
+				ssl_stream = epl.Listener.CreateSslStream (new NetworkStream (sock, false), false, cert_helper.RemoteCertificateValidationCallback);
 				stream = ssl_stream;
 			}
 			timer = new Timer (OnTimeout, null, Timeout.Infinite, Timeout.Infinite);
@@ -95,11 +86,11 @@ namespace System.Net {
 		}
 
 		internal int [] ClientCertificateErrors {
-			get { return client_cert_errors; }
+			get { return cert_helper.ClientCertificateErrors; }
 		}
 
 		internal X509Certificate2 ClientCertificate {
-			get { return client_cert; }
+			get { return cert_helper.ClientCertificate; }
 		}
 
 		void Init ()
@@ -154,7 +145,7 @@ namespace System.Net {
 
 		void OnTimeout (object unused)
 		{
-			Close (true);
+			Close (false);
 		}
 
 		public void BeginReadRequest ()
@@ -464,7 +455,7 @@ namespace System.Net {
 			}
 		}
 
-/*		~HttpConnection()
+		~HttpConnection()
 		{
 			Close (true);
 
@@ -488,16 +479,12 @@ namespace System.Net {
 				timer = null;
 			}
 
-			if (client_cert != null) {
-				client_cert.Dispose();
-				client_cert = null;
-			}
-
+			cert_helper = null;
 			cert = null;
 			local_ep = null;
 			last_listener = null;
 			epl = null;
-		}*/
+		}
 
 		internal void Close (bool force_close)
 		{
@@ -561,38 +548,34 @@ namespace System.Net {
 				CloseSocketSafe ();
 				Unbind ();
 				RemoveConnection ();
-
-				if (stream != null) {
-					stream.Close();
-					stream = null;
-				}
-
-				if (ssl_stream != null) {
-					ssl_stream.Dispose();
-					ssl_stream = null;
-				}
-				/*
-				if (ms != null) {
-					ms.Close();
-					ms = null;
-				}
-
-				if (timer != null) {
-					timer.Dispose();
-					timer = null;
-				}
-
-				if (client_cert != null) {
-					client_cert.Dispose();
-					client_cert = null;
-				}
-
-				cert = null;
-				local_ep = null;
-				last_listener = null;
-				epl = null; */
 				return;
 			}
+		}
+	}
+
+	internal class HttpConnectionCertificateHelper
+	{
+		int [] client_cert_errors;
+		X509Certificate2 client_cert;
+
+		public bool RemoteCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		{
+			if (certificate == null)
+				return true;
+			var c2 = certificate as X509Certificate2;
+			if (c2 == null)
+				c2 = new X509Certificate2 (certificate.GetRawCertData ());
+			client_cert = c2;
+			client_cert_errors = new int[] { (int)sslPolicyErrors };
+			return true;
+		}
+
+		internal int [] ClientCertificateErrors {
+			get { return client_cert_errors; }
+		}
+
+		internal X509Certificate2 ClientCertificate {
+			get { return client_cert; }
 		}
 	}
 }
