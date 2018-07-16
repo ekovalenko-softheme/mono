@@ -154,7 +154,7 @@ namespace System.Net {
 
 		void OnTimeout (object unused)
 		{
-			Close (false);
+			Close (true);
 		}
 
 		public void BeginReadRequest ()
@@ -464,7 +464,7 @@ namespace System.Net {
 			}
 		}
 
-		~HttpConnection()
+/*		~HttpConnection()
 		{
 			Close (true);
 
@@ -497,7 +497,7 @@ namespace System.Net {
 			local_ep = null;
 			last_listener = null;
 			epl = null;
-		}
+		}*/
 
 		internal void Close (bool force_close)
 		{
@@ -561,6 +561,36 @@ namespace System.Net {
 				CloseSocketSafe ();
 				Unbind ();
 				RemoveConnection ();
+
+				if (stream != null) {
+					stream.Close();
+					stream = null;
+				}
+
+				if (ssl_stream != null) {
+					ssl_stream.Dispose();
+					ssl_stream = null;
+				}
+				/*
+				if (ms != null) {
+					ms.Close();
+					ms = null;
+				}
+
+				if (timer != null) {
+					timer.Dispose();
+					timer = null;
+				}
+
+				if (client_cert != null) {
+					client_cert.Dispose();
+					client_cert = null;
+				}
+
+				cert = null;
+				local_ep = null;
+				last_listener = null;
+				epl = null; */
 				return;
 			}
 		}
